@@ -34,7 +34,10 @@ Each package is versioned and released on its own:
 1. Bump `version` in `packages/<name>/package.json` in a PR, and merge it.
 2. Tag the merge commit `<name>-v<version>` and push the tag, e.g. `git tag otel-v0.2.0 && git push origin otel-v0.2.0`.
 
-`publish.yml` checks the tag against the package version, runs the checks, and publishes with npm
-Trusted Publishing (OIDC) and a provenance attestation. A brand-new package needs the `NPM_TOKEN`
+`publish.yml` checks the tag against the package version, runs the checks, and stages the version
+with npm Trusted Publishing (OIDC) and a provenance attestation.
+
+3. Approve it with 2FA: Staged Packages on npmjs.com, or `npm stage list @wshno/<name>` and
+   `npm stage approve <stage-id>`. Until then nothing is published. A brand-new package needs the `NPM_TOKEN`
 secret for its first version, because a trusted publisher can only be configured on a package that
 exists; see the comment at the top of `publish.yml`.

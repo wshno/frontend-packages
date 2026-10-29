@@ -57,6 +57,11 @@ export default function Home() {
     expect(await lint(code, 'app/components/Home.tsx')).toContain('react-refresh/only-export-components')
   })
 
+  it('treats .cjs files as CommonJS in Node', async () => {
+    expect(await lint(`module.exports = { dir: __dirname }
+`, 'orval-transformer.cjs')).toEqual([])
+  })
+
   it('allows unused names prefixed with _', async () => {
     expect(await lint('export function f(_unused: number) { return 1 }\n', 'app/f.ts')).toEqual([])
     expect(await lint('export function f(unused: number) { return 1 }\n', 'app/f.ts')).toContain(

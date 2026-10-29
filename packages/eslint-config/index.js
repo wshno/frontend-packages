@@ -79,6 +79,14 @@ export const reactRouter = [
       globals: { ...globals.node },
     },
   },
+  // Tool config in CommonJS, e.g. orval or postcss transformers.
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { ...globals.node },
+    },
+  },
 ]
 
 /** Node code: scripts, tools, Playwright and other test runners. */

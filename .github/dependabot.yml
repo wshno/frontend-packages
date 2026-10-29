@@ -12,6 +12,11 @@ updates:
         patterns: ['eslint', '@eslint/*', '@eslint-react/*', 'eslint-plugin-*', 'typescript-eslint', 'globals']
       tooling:
         patterns: ['prettier', 'typescript', 'vitest', '@types/*']
+    ignore:
+      # typescript-eslint (and so @wshno/eslint-config's peer range) supports TypeScript <6.1.
+      # Drop this once a typescript-eslint release widens that range.
+      - dependency-name: typescript
+        versions: ['>=6.1']
 
   - package-ecosystem: github-actions
     directory: /

@@ -1,0 +1,30 @@
+{
+  "name": "@wshno/frontend-packages",
+  "private": true,
+  "description": "Shared frontend packages published to npm under @wshno",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier . --write",
+    "format/check": "prettier . --check",
+    "pack/check": "npm pack --workspaces --dry-run"
+  },
+  "prettier": "@wshno/prettier-config",
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "eslint": "10.13.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

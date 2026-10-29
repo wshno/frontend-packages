@@ -1,0 +1,32 @@
+{
+  "name": "@wshno/tsconfig",
+  "version": "0.1.0",
+  "description": "Shared TypeScript base configs: base, React Router (Vite), Node",
+  "license": "MIT",
+  "author": "Hans Christian Winther-Sørensen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wshno/frontend-packages.git",
+    "directory": "packages/tsconfig"
+  },
+  "exports": {
+    "./base.json": "./base.json",
+    "./react-router.json": "./react-router.json",
+    "./node.json": "./node.json"
+  },
+  "files": [
+    "*.json",
+    "!package.json"
+  ],
+  "keywords": [
+    "tsconfig",
+    "typescript"
+  ],
+  "peerDependencies": {
+    "typescript": ">=5.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

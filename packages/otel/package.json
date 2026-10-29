@@ -1,0 +1,72 @@
+{
+  "name": "@wshno/otel",
+  "version": "0.1.0",
+  "description": "OpenTelemetry setup for React Router apps: browser tracing, the Node SDK for the SSR server, and SSR request spans",
+  "license": "MIT",
+  "author": "Hans Christian Winther-Sørensen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wshno/frontend-packages.git",
+    "directory": "packages/otel"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "default": "./dist/web.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./ssr": {
+      "types": "./dist/ssr.d.ts",
+      "default": "./dist/ssr.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*"
+  ],
+  "keywords": [
+    "opentelemetry",
+    "otel",
+    "tracing",
+    "react-router"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "0.82.0",
+    "@opentelemetry/auto-instrumentations-web": "0.69.0",
+    "@opentelemetry/context-zone": "3.0.0",
+    "@opentelemetry/core": "3.0.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.300.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.300.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.300.0",
+    "@opentelemetry/instrumentation": "0.300.0",
+    "@opentelemetry/resources": "3.0.0",
+    "@opentelemetry/sdk-logs": "3.0.0",
+    "@opentelemetry/sdk-metrics": "3.0.0",
+    "@opentelemetry/sdk-node": "0.300.0",
+    "@opentelemetry/sdk-trace": "3.0.0",
+    "@opentelemetry/semantic-conventions": "1.44.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.10.0 <1.11.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/context-async-hooks": "3.0.0",
+    "@wshno/tsconfig": "*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@wshno/prettier-config",
+  "version": "0.1.0",
+  "description": "Shared Prettier config: single quotes, no semicolons, trailing commas, width 120",
+  "license": "MIT",
+  "author": "Hans Christian Winther-Sørensen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wshno/frontend-packages.git",
+    "directory": "packages/prettier-config"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./index.json"
+  },
+  "files": [
+    "index.json"
+  ],
+  "keywords": [
+    "prettier",
+    "prettier-config"
+  ],
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

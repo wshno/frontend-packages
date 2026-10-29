@@ -1,13 +1,18 @@
 name: Publish
 
-# Publishes one package to npmjs when its tag is pushed: `<package>-v<version>`, e.g. `otel-v0.2.0`
-# publishes packages/otel as @wshno/otel@0.2.0. The tag's version must equal the package.json version.
+# Stages one package on npmjs when its tag is pushed: `<package>-v<version>`, e.g. `otel-v0.2.0`
+# stages packages/otel as @wshno/otel@0.2.0. The tag's version must equal the package.json version.
+#
+# Staged, not published: the version only goes live once a maintainer approves it with 2FA, under
+# Staged Packages on npmjs.com or with `npm stage approve <stage-id>`. So neither this workflow nor a
+# leaked token can ship a release on its own.
 #
 # Auth is npm Trusted Publishing (OIDC, no stored token), and every version gets a provenance
-# attestation linking it to this workflow run. Each package must list this repo and `publish.yml` as
-# its trusted publisher on npmjs.com. Trusted publishing can only be set up on a package that exists,
-# so the first version of a new package needs the NPM_TOKEN secret (a short-lived granular token);
-# delete the secret once the trusted publisher is configured.
+# attestation linking it to this workflow run. Each package lists this repo and `publish.yml` as its
+# trusted publisher on npmjs.com, with direct publishing and dist-tag management off (stage only).
+# Trusted publishing can only be set up on a package that exists, so the first version of a new
+# package needs the NPM_TOKEN secret (a short-lived granular token); delete it once the trusted
+# publisher is configured.
 
 on:
   push:
@@ -69,15 +74,19 @@ jobs:
       - run: npm run build
 
       # publishConfig in each package.json sets access public and provenance.
-      - name: Publish ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}
+      - name: Stage ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}
         env:
           NAME: ${{ steps.package.outputs.name }}
           # Empty unless bootstrapping a new package; npm uses OIDC otherwise.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace "$NAME"
+        run: npm stage publish --workspace "$NAME"
 
       - name: Summary
         env:
           NAME: ${{ steps.package.outputs.name }}
           VERSION: ${{ steps.package.outputs.version }}
-        run: echo "Published [\`${NAME}@${VERSION}\`](https://www.npmjs.com/package/${NAME}/v/${VERSION})" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          {
+            echo "Staged \`${NAME}@${VERSION}\`. It goes live once approved with 2FA:"
+            echo "Staged Packages on npmjs.com, or \`npm stage list ${NAME}\` then \`npm stage approve <stage-id>\`."
+          } >> "$GITHUB_STEP_SUMMARY"

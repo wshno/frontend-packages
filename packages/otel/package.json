@@ -1,6 +1,6 @@
 {
   "name": "@wshno/otel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenTelemetry setup for React Router apps: browser tracing, the Node SDK for the SSR server, and SSR request spans",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",

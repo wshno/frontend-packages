@@ -1,6 +1,6 @@
 {
   "name": "@wshno/eslint-config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared ESLint flat config: JavaScript and TypeScript recommended, React (@eslint-react), React Refresh",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",

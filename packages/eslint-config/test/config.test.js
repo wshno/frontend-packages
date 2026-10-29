@@ -58,8 +58,13 @@ export default function Home() {
   })
 
   it('treats .cjs files as CommonJS in Node', async () => {
-    expect(await lint(`module.exports = { dir: __dirname }
-`, 'orval-transformer.cjs')).toEqual([])
+    expect(
+      await lint(
+        `module.exports = { dir: __dirname }
+`,
+        'orval-transformer.cjs',
+      ),
+    ).toEqual([])
   })
 
   it('allows unused names prefixed with _', async () => {

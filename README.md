@@ -39,5 +39,5 @@ with npm Trusted Publishing (OIDC) and a provenance attestation.
 
 3. Approve it with 2FA: Staged Packages on npmjs.com, or `npm stage list @wshno/<name>` and
    `npm stage approve <stage-id>`. Until then nothing is published. A brand-new package needs the `NPM_TOKEN`
-secret for its first version, because a trusted publisher can only be configured on a package that
-exists; see the comment at the top of `publish.yml`.
+   secret for its first version, because a trusted publisher can only be configured on a package that
+   exists; see the comment at the top of `publish.yml`.

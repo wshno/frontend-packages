@@ -58,6 +58,64 @@ export default definePlaywrightConfig({
 })
 ```
 
+## Layout
+
+Keep the e2e suite in its own npm package (`e2e/`, or `tests/e2e/` next to other test folders), not in the
+app's `package.json`. CI then installs Playwright and the specs, not the whole app, and the app drops its
+Playwright dependencies. For example:
+
+```text
+e2e/
+  package.json          @wshno/playwright-config (+ reporters, eslint, tsconfig)
+  playwright.config.ts
+  tests/                specs, page objects, fixtures
+```
+
+With `playwright-e2e.yml`, point `playwright_working_directory` at that folder.
+
+## Two configs, one suite
+
+When the same specs run in two modes, for example locally against dev servers and on CI against a
+built image, give each mode its own config and share only the specs:
+
+```ts
+// playwright.config.ts: local, starts the servers itself
+export default definePlaywrightConfig({
+  workers: 1,
+  use: { baseURL: 'http://localhost:8081' },
+  webServer: [{ command: 'npx expo start --web --port 8081', cwd: '../app', url: 'http://localhost:8081' }],
+})
+
+// playwright.ci.config.ts: CI, the stack is already up (docker compose)
+export default definePlaywrightConfig({
+  workers: 1,
+  use: { baseURL: process.env.BASE_URL ?? 'http://localhost:8081' },
+})
+```
+
+Run the second with `playwright test --config playwright.ci.config.ts`.
+
+## Packages that bring their own Playwright
+
+Some tools depend on `playwright` or `playwright-core` themselves: Artillery's Playwright engine,
+`playwright-lighthouse`. Override them to the version this package pins, so the lockfile holds one
+Playwright:
+
+```json
+"overrides": {
+  "playwright": "1.64.1",
+  "playwright-core": "1.64.1"
+}
+```
+
+npm can only refer to a direct dependency in an override, so the version is written out; update it
+together with this package.
+
+## CommonJS suites
+
+The package is ESM. A suite without `"type": "module"` still loads it, because Node 22.12+ can
+`require()` an ES module that has no top-level await.
+
 ## Lint
 
 `@wshno/eslint-config` has a `playwright` preset for the spec files.

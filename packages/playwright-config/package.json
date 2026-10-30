@@ -1,0 +1,45 @@
+{
+  "name": "@wshno/playwright-config",
+  "version": "0.1.0",
+  "description": "Shared Playwright config, and the one pinned @playwright/test version for every app's e2e tests",
+  "license": "MIT",
+  "author": "Hans Christian Winther-Sørensen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wshno/frontend-packages.git",
+    "directory": "packages/playwright-config"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*"
+  ],
+  "keywords": [
+    "playwright",
+    "playwright-config",
+    "e2e"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@playwright/test": "1.64.1"
+  },
+  "devDependencies": {
+    "@wshno/tsconfig": "*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

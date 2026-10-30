@@ -2,12 +2,13 @@
 
 Shared frontend packages, published to npm under `@wshno`.
 
-| Package                                              | What it is                                                                                                 |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [`@wshno/eslint-config`](packages/eslint-config)     | ESLint 10 flat config: JavaScript and TypeScript recommended, React through @eslint-react, React Refresh   |
-| [`@wshno/otel`](packages/otel)                       | OpenTelemetry JS 3.0 setup for React Router apps: browser tracing, the Node SDK for SSR, SSR request spans |
-| [`@wshno/prettier-config`](packages/prettier-config) | Prettier config: single quotes, no semicolons, trailing commas, width 120                                  |
-| [`@wshno/tsconfig`](packages/tsconfig)               | TypeScript base configs: base, React Router (Vite), Node                                                   |
+| Package                                                  | What it is                                                                                                 |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`@wshno/eslint-config`](packages/eslint-config)         | ESLint 10 flat config: JavaScript and TypeScript recommended, React through @eslint-react, React Refresh   |
+| [`@wshno/otel`](packages/otel)                           | OpenTelemetry JS 3.0 setup for React Router apps: browser tracing, the Node SDK for SSR, SSR request spans |
+| [`@wshno/playwright-config`](packages/playwright-config) | Playwright config, and the one pinned `@playwright/test` version for every app's e2e tests                 |
+| [`@wshno/prettier-config`](packages/prettier-config)     | Prettier config: single quotes, no semicolons, trailing commas, width 120                                  |
+| [`@wshno/tsconfig`](packages/tsconfig)                   | TypeScript base configs: base, React Router (Vite), Node                                                   |
 
 Apps depend on these instead of on the tools' plugin and SDK packages, so a major upgrade (a new
 ESLint, an OpenTelemetry SDK generation) is done once here and arrives in each app as one version bump.

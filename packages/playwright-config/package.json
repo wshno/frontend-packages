@@ -1,6 +1,6 @@
 {
   "name": "@wshno/playwright-config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared Playwright config, and the one pinned @playwright/test version for every app's e2e tests",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",

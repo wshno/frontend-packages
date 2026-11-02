@@ -38,3 +38,5 @@ export function definePlaywrightConfig(config: PlaywrightTestConfig = {}): Playw
     },
   })
 }
+
+export * from './csp.js'

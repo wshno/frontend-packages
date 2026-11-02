@@ -1,7 +1,7 @@
 {
   "name": "@wshno/playwright-config",
-  "version": "0.1.1",
-  "description": "Shared Playwright config, and the one pinned @playwright/test version for every app's e2e tests",
+  "version": "0.2.0",
+  "description": "Shared Playwright config, a CSP violation guard, and the one pinned @playwright/test version for every app's e2e tests",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",
   "repository": {
@@ -24,12 +24,15 @@
   "keywords": [
     "playwright",
     "playwright-config",
-    "e2e"
+    "e2e",
+    "csp",
+    "content-security-policy"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test/browser": "playwright test",
     "prepack": "npm run build"
   },
   "dependencies": {

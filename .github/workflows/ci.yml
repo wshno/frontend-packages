@@ -32,6 +32,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+
+      # The CSP guard in @wshno/playwright-config, against real Chromium and Firefox.
+      - run: npx playwright install --with-deps chromium firefox
+      - run: npm run test/browser --workspace @wshno/playwright-config
       - run: npm run build
 
       # What each package would publish: catches files missing from (or leaking into) `files`.

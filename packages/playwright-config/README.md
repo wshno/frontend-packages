@@ -1,6 +1,7 @@
 # @wshno/playwright-config
 
-The shared Playwright config, and the one pinned `@playwright/test` version for every app's e2e tests.
+The shared Playwright config, a CSP violation guard, and the one pinned `@playwright/test` version for every
+app's e2e tests.
 
 Apps depend on this package instead of on `@playwright/test`. A Playwright upgrade is then made once
 here, and reaches each app as one version bump. npm hoists the pinned `@playwright/test`, so specs keep
@@ -115,6 +116,60 @@ together with this package.
 
 The package is ESM. A suite without `"type": "module"` still loads it, because Node 22.12+ can
 `require()` an ES module that has no top-level await.
+
+## CSP guard
+
+`cspTest` fails a test when the page breaks its Content-Security-Policy. Report-Only violations count
+too, so a policy can be tried in `Content-Security-Policy-Report-Only` first and the e2e suite already
+fails on what it would block. Every existing spec becomes a CSP test, without new specs.
+
+It listens for `securitypolicyviolation` in every page and frame of the test's browser context, and
+fails the test in teardown with one line per violation. The violations are also attached to the test as
+`csp-violations.json`.
+
+Merge it into the suite's own `test`, and import `test` from there in the specs:
+
+```ts
+// fixtures/test.ts
+import { mergeTests } from '@playwright/test'
+import { cspTest } from '@wshno/playwright-config'
+
+import { test as authTest } from './auth'
+
+export * from '@playwright/test'
+export const test = mergeTests(authTest, cspTest)
+```
+
+A suite that already calls `test.extend(...)` can spread `cspFixtures` into it instead.
+
+Options, with `test.use()` in the fixtures file or in a spec:
+
+```ts
+test.use({
+  cspGuard: {
+    // fail (default), warn (annotate only) or off
+    mode: 'fail',
+    // violations to accept, for example from a third-party script the app does not control
+    allow: [(v) => v.blockedURI.startsWith('https://www.google-analytics.com/')],
+  },
+})
+```
+
+- A spec can read what was collected from the `cspViolations` fixture.
+- Contexts a spec opens itself with `browser.newContext()` are not covered. Call
+  `attachCspGuard(context)` on them.
+- `bypassCSP: true` turns CSP off in the browser, so the guard refuses to run with it. Set
+  `cspGuard: { mode: 'off' }` in specs that need it.
+- Violations from web workers are not reported.
+- It catches only what the specs visit. Run the policy as Report-Only in production for a while too.
+
+To check the header itself, `parseCsp()` turns it into one directive map per policy:
+
+```ts
+const response = await page.goto('/')
+const [policy] = parseCsp(response?.headers()['content-security-policy'])
+expect(policy?.get('frame-ancestors')).toEqual(["'none'"])
+```
 
 ## Lint
 

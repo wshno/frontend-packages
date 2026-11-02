@@ -1,4 +1,6 @@
-import { type BrowserContext, test as base, type TestInfo } from '@playwright/test'
+import { type BrowserContext, test as base } from '@playwright/test'
+
+import { flush, type GuardOptions, reportGuard, unexpected } from './guard.js'
 
 /** One `securitypolicyviolation` event, as the browser reported it. */
 export interface CspViolation {
@@ -16,12 +18,7 @@ export interface CspViolation {
   violatedDirective: string
 }
 
-export interface CspGuardOptions {
-  /** Violations to accept, for example from a third-party script the app does not control. */
-  allow?: ((violation: CspViolation) => boolean)[]
-  /** `fail` fails the test on a violation, `warn` only annotates it, `off` does not listen. */
-  mode?: 'fail' | 'off' | 'warn'
-}
+export type CspGuardOptions = GuardOptions<CspViolation>
 
 export interface CspTestOptions {
   cspGuard: CspGuardOptions
@@ -90,43 +87,7 @@ export function formatCspViolation(v: CspViolation): string {
 
 /** Drops duplicates and allowed violations, in the order they were reported. */
 export function unexpectedCspViolations(violations: CspViolation[], allow: CspGuardOptions['allow'] = []) {
-  const seen = new Set<string>()
-  return violations.filter((v) => {
-    const key = violationKey(v)
-    if (seen.has(key) || allow.some((accept) => accept(v))) return false
-    seen.add(key)
-    return true
-  })
-}
-
-// Violation events are queued tasks, so one from the test's last action may not have reached the binding
-// yet. A round trip through each open page lets them through; pages that are closing are skipped.
-async function flush(context: BrowserContext) {
-  await Promise.all(
-    context
-      .pages()
-      .map((page) =>
-        Promise.race([
-          page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0))).catch(() => undefined),
-          new Promise((resolve) => setTimeout(resolve, 1000)),
-        ]),
-      ),
-  )
-}
-
-async function report(testInfo: TestInfo, options: CspGuardOptions, violations: CspViolation[]) {
-  const unexpected = unexpectedCspViolations(violations, options.allow)
-  if (unexpected.length === 0) return
-  await testInfo.attach('csp-violations.json', {
-    body: JSON.stringify(unexpected, null, 2),
-    contentType: 'application/json',
-  })
-  const lines = unexpected.map(formatCspViolation)
-  if (options.mode === 'warn') {
-    for (const line of lines) testInfo.annotations.push({ description: line, type: 'csp-violation' })
-    return
-  }
-  throw new Error(`${unexpected.length} CSP violation(s):\n  ${lines.join('\n  ')}`)
+  return unexpected(violations, violationKey, allow)
 }
 
 /**
@@ -148,7 +109,13 @@ export const cspFixtures: Parameters<typeof base.extend<CspFixtures>>[0] = {
       const violations = await attachCspGuard(context)
       await use(violations)
       await flush(context)
-      await report(testInfo, { allow: [], mode: 'fail', ...cspGuard }, violations)
+      await reportGuard(testInfo, cspGuard, violations, {
+        annotation: 'csp-violation',
+        attachment: 'csp-violations.json',
+        format: formatCspViolation,
+        key: violationKey,
+        noun: 'CSP violation(s)',
+      })
     },
     { auto: true },
   ],

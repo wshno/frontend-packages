@@ -1,7 +1,8 @@
 # @wshno/playwright-config
 
-The shared Playwright config, a CSP violation guard, and the one pinned `@playwright/test` version for every
-app's e2e tests.
+The shared Playwright config, guards that fail a test on what it doesn't check (CSP violations, console
+errors, failed requests), an axe accessibility check, and the one pinned `@playwright/test` version for
+every app's e2e tests.
 
 Apps depend on this package instead of on `@playwright/test`. A Playwright upgrade is then made once
 here, and reaches each app as one version bump. npm hoists the pinned `@playwright/test`, so specs keep
@@ -117,59 +118,113 @@ together with this package.
 The package is ESM. A suite without `"type": "module"` still loads it, because Node 22.12+ can
 `require()` an ES module that has no top-level await.
 
-## CSP guard
+## Guards
 
-`cspTest` fails a test when the page breaks its Content-Security-Policy. Report-Only violations count
-too, so a policy can be tried in `Content-Security-Policy-Report-Only` first and the e2e suite already
-fails on what it would block. Every existing spec becomes a CSP test, without new specs.
+Three auto fixtures fail a test on problems it doesn't assert on, even when everything it does check
+works:
 
-It listens for `securitypolicyviolation` in every page and frame of the test's browser context, and
-fails the test in teardown with one line per violation. The violations are also attached to the test as
-`csp-violations.json`.
+| Guard          | Fails on                                                                      | Fixture with what it found |
+| -------------- | ----------------------------------------------------------------------------- | -------------------------- |
+| `cspGuard`     | Content-Security-Policy violations, Report-Only included                      | `cspViolations`            |
+| `consoleGuard` | `console.error` and `console.warn`, uncaught exceptions, unhandled rejections | `consoleEntries`           |
+| `requestGuard` | browser requests that answer 4xx/5xx or fail with a network error             | `failedRequests`           |
 
-Merge it into the suite's own `test`, and import `test` from there in the specs:
+Each one fails the test in teardown, with one line per finding, and attaches its findings as JSON. Each
+covers every page and frame in the test's browser context.
+
+`guardsTest` has all three. Merge it into the suite's own `test`, and import `test` from there in the
+specs:
 
 ```ts
 // fixtures/test.ts
 import { mergeTests } from '@playwright/test'
-import { cspTest } from '@wshno/playwright-config'
+import { guardsTest } from '@wshno/playwright-config'
 
 import { test as authTest } from './auth'
 
 export * from '@playwright/test'
-export const test = mergeTests(authTest, cspTest)
+export const test = mergeTests(authTest, guardsTest)
 ```
 
-A suite that already calls `test.extend(...)` can spread `cspFixtures` into it instead.
+`cspTest`, `consoleTest` and `requestTest` have one guard each. A suite that already calls
+`test.extend(...)` can spread `cspFixtures`, `consoleFixtures` and `requestFixtures` into it instead.
 
-Options, with `test.use()` in the fixtures file or in a spec:
+### Options
+
+Set them with `test.use()`, in the fixtures file or in a spec. Every guard takes `mode` and `allow`:
 
 ```ts
 test.use({
-  cspGuard: {
+  consoleGuard: {
     // fail (default), warn (annotate only) or off
-    mode: 'fail',
-    // violations to accept, for example from a third-party script the app does not control
-    allow: [(v) => v.blockedURI.startsWith('https://www.google-analytics.com/')],
+    mode: 'warn',
+    // findings to accept
+    allow: [(entry) => entry.text.includes('Download the React DevTools')],
+    // console only: which entries count (default: all three)
+    types: ['error', 'pageerror'],
+  },
+  requestGuard: {
+    // a spec that checks the 404 page on purpose
+    allow: [(request) => request.resourceType === 'document' && request.status === 404],
+    // requests only: ignore requests the browser cancelled, e.g. by navigating away (default: true)
+    ignoreAborted: true,
+  },
+  cspGuard: {
+    allow: [(violation) => violation.blockedURI.startsWith('https://www.google-analytics.com/')],
   },
 })
 ```
 
-- A spec can read what was collected from the `cspViolations` fixture.
-- Contexts a spec opens itself with `browser.newContext()` are not covered. Call
-  `attachCspGuard(context)` on them.
-- `bypassCSP: true` turns CSP off in the browser, so the guard refuses to run with it. Set
-  `cspGuard: { mode: 'off' }` in specs that need it.
-- Violations from web workers are not reported.
-- It catches only what the specs visit. Run the policy as Report-Only in production for a while too.
+**Taking them into an existing suite:** start with `mode: 'warn'`. The findings then show up as
+annotations in the report, and the suite stays green while they are cleaned up. Then switch to `fail`.
 
-To check the header itself, `parseCsp()` turns it into one directive map per policy:
+### What each one sees
+
+- **One finding, one guard.** The browser also logs CSP violations and failed loads to the console.
+  `consoleGuard` leaves those to the other two, so nothing is reported twice. (`isOwnedByOtherGuard()`
+  is the filter.)
+- **Contexts a spec opens itself** with `browser.newContext()` are not covered. Call
+  `attachCspGuard(context)`, `attachConsoleGuard(context)` or `attachRequestGuard(context)` on them.
+- **The `request` fixture** (APIRequestContext) is not the browser, so `requestGuard` does not see it.
+  A spec can assert on those responses directly.
+- **`bypassCSP: true`** turns CSP off in the browser, so `cspGuard` refuses to run with it. Set
+  `cspGuard: { mode: 'off' }` in specs that need it.
+- **Web workers:** violations and console output from workers are not reported.
+- **Only what the specs visit.** For CSP, run the policy as Report-Only in production for a while too.
+
+To check the CSP header itself, `parseCsp()` turns it into one directive map per policy:
 
 ```ts
 const response = await page.goto('/')
 const [policy] = parseCsp(response?.headers()['content-security-policy'])
 expect(policy?.get('frame-ancestors')).toEqual(["'none'"])
 ```
+
+## Accessibility
+
+`expectAccessible(page)` runs [axe](https://github.com/dequelabs/axe-core) on the page as it is now and
+fails on serious and critical violations of WCAG 2.0, 2.1 and 2.2 A and AA. The full axe result is
+attached to the test.
+
+```ts
+import { expectAccessible } from '@wshno/playwright-config'
+
+test('the record list is accessible', async ({ page }) => {
+  await page.goto('/records')
+  await expectAccessible(page)
+
+  // A dialog that is not open is not scanned: open it, then check again.
+  await page.getByRole('button', { name: 'Add record' }).click()
+  await expectAccessible(page, { include: ['[role="dialog"]'] })
+})
+```
+
+Options: `impacts` (default `['serious', 'critical']`), `tags` (default `defaultAxeTags`), `include`
+and `exclude` (CSS selectors), and `disableRules` (axe rule ids, e.g. `color-contrast` while a design
+fix is pending).
+
+It is an explicit call, not a guard: a scan is not free, and only the spec knows
+when the page shows what should be checked.
 
 ## Lint
 

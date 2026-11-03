@@ -229,3 +229,26 @@ when the page shows what should be checked.
 ## Lint
 
 `@wshno/eslint-config` has a `playwright` preset for the spec files.
+
+## Runner image
+
+Each version of this package has an e2e runner image with the same version,
+`ghcr.io/wshno/playwright-config:<version>`: `node:26-bookworm-slim` plus `chromium-headless-shell` for
+the pinned `@playwright/test`, signed with cosign. A job in it installs no browsers, so it suits a
+runner that can only reach a container registry; only `npm ci` needs a (possibly internal) npm
+registry. Browser downloads are turned off in the image, so a version mismatch fails instead of
+quietly downloading.
+
+Bump the image tag together with this package: Playwright looks for the browser revision of its own
+version. With `hwinther/reusable-workflows`' `playwright-e2e.yml`:
+
+```yaml
+with:
+  container_image: ghcr.io/wshno/playwright-config:0.4.0 # same version as @wshno/playwright-config
+  base_url: https://app.test.example
+```
+
+Headless only: the image has no headed Chromium, Firefox or WebKit. At 1.64.1 it is 363 MB
+compressed, against 991 MB for Microsoft's `mcr.microsoft.com/playwright`. The image is built from
+[`image/Dockerfile`](image/Dockerfile) on the same `playwright-config-v<version>` tag that stages the
+npm package.

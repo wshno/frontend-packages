@@ -1,4 +1,4 @@
-import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api'
+import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 import type { TextMapGetter } from '@opentelemetry/api'
 
 /** Reads trace context from Fetch API `Headers`, e.g. an incoming `Request`'s. */
@@ -19,17 +19,20 @@ export interface RequestSpanOptions {
 }
 
 /**
- * Runs `fn` inside a span for an incoming request, continuing the trace from its `traceparent` header.
- * The span records the method and URL, and the error if `fn` throws. Use it in `entry.server.tsx`
- * around the render.
+ * Runs `fn` inside a server span for an incoming request, continuing the trace from its `traceparent`
+ * header. The span records the method, path and URL, and the error if `fn` throws. Use it in
+ * `entry.server.tsx` around the render.
  */
 export function withRequestSpan<T>(request: Request, fn: () => Promise<T>, options: RequestSpanOptions): Promise<T> {
   const parentContext = propagation.extract(context.active(), request.headers, headersTextMapGetter)
 
   return context.with(parentContext, async () => {
+    // SERVER: it handles an incoming request, so trace backends and request reports count it as one.
     const span = trace.getTracer(options.tracerName).startSpan(options.spanName ?? 'ssr.document', {
+      kind: SpanKind.SERVER,
       attributes: {
         'http.request.method': request.method,
+        'url.path': new URL(request.url).pathname,
         'url.full': request.url,
       },
     })

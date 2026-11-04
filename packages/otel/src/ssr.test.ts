@@ -1,4 +1,4 @@
-import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api'
+import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
 import { W3CTraceContextPropagator } from '@opentelemetry/core'
 import { InMemorySpanExporter, SimpleSpanProcessor, TracerProvider } from '@opentelemetry/sdk-trace'
@@ -44,7 +44,9 @@ describe('withRequestSpan', () => {
     expect(span?.name).toBe('ssr.document')
     expect(span?.spanContext().traceId).toBe(traceId)
     expect(span?.parentSpanContext?.spanId).toBe(parentSpanId)
+    expect(span?.kind).toBe(SpanKind.SERVER)
     expect(span?.attributes['http.request.method']).toBe('GET')
+    expect(span?.attributes['url.path']).toBe('/items')
     expect(span?.attributes['url.full']).toBe('https://app.example.com/items?page=2')
     expect(span?.status.code).toBe(SpanStatusCode.OK)
   })

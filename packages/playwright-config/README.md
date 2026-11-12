@@ -50,15 +50,68 @@ On CI the html report goes to `playwright-report/` and the json report to
 [hwinther/reusable-workflows](https://github.com/hwinther/reusable-workflows) uploads and builds its PR
 summary from.
 
-To add reporters, extend the exported lists:
+To add reporters, extend the exported lists. `allureReporter()` and `monocartReporter()` give the
+entries the apps share (install `allure-playwright` and `monocart-reporter` yourself; they are optional
+peers):
 
 ```ts
-import { ciReporters, definePlaywrightConfig, isCI, localReporters } from '@wshno/playwright-config'
+import {
+  allureReporter,
+  ciReporters,
+  definePlaywrightConfig,
+  isCI,
+  localReporters,
+  monocartReporter,
+} from '@wshno/playwright-config'
 
 export default definePlaywrightConfig({
-  reporter: isCI ? [...ciReporters, ['allure-playwright']] : localReporters,
+  reporter: isCI ? [...ciReporters, allureReporter(), monocartReporter({ name: 'App E2E' })] : localReporters,
 })
 ```
+
+## Coverage
+
+Browser JS coverage of the app's bundle, mapped back to its sources through the source maps, and merged
+with the unit tests' coverage into one table.
+
+1. **Collect.** Add the monocart reporter with `coverage`, and build the suite's `test` on `coverageTest`.
+   Its `page` records V8 coverage and hands it to monocart, only when the run has that reporter and the
+   browser is Chromium, so local runs without it pay nothing.
+
+   ```ts
+   // playwright.config.ts
+   reporter: isCI
+     ? [
+         ...ciReporters,
+         monocartReporter({
+           name: 'App E2E',
+           coverage: { origin: baseURL, layout: { root: 'frontend', sourceDirs: ['app'] } },
+         }),
+       ]
+     : localReporters,
+
+   // tests/fixtures.ts
+   export const test = mergeTests(guardsTest, coverageTest)
+   ```
+
+   `layout` names the app's directory in the repo and its source directories: paths from the source maps
+   become repo-relative (`frontend/app/root.tsx`), and anything outside `root` (node_modules, generated
+   files) drops out. `origin` keeps the scripts served by the app; pass `entryFilter` instead to narrow it
+   to the app's own chunks. The reports (v8 html, lcov, Cobertura) go to `monocart-coverage/`: list it in
+   `playwright-e2e.yml`'s `coverage_paths_json` to upload it as the `e2e-coverage` artifact.
+
+2. **Merge.** `wshno-coverage-summary` prints a Markdown table (unit, e2e, combined, and the files where e2e
+   adds the most) for a job summary or a PR comment. Either report may be lcov or Cobertura, and the paths
+   are normalised with the same layout:
+
+   ```sh
+   npx wshno-coverage-summary --unit frontend/coverage/cobertura-coverage.xml \
+     --e2e e2e/monocart-coverage/lcov.info --root frontend --source-dirs app
+   ```
+
+   `--exclude <regex>` drops files (matched against the normalised path), `--top <n>` sizes the gains table,
+   and `--unit-label` names the unit row. The merge is approximate: istanbul counts statement lines and V8
+   counts every executable line, so a line only one side knows keeps that side's status.
 
 ## Layout
 

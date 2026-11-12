@@ -6,7 +6,7 @@ Shared frontend packages, published to npm under `@wshno`.
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | [`@wshno/eslint-config`](packages/eslint-config)         | ESLint 10 flat config: JavaScript and TypeScript recommended, React through @eslint-react, React Refresh                             |
 | [`@wshno/otel`](packages/otel)                           | OpenTelemetry JS 3.0 setup for React Router apps: browser tracing, the Node SDK for SSR, SSR request spans                           |
-| [`@wshno/playwright-config`](packages/playwright-config) | Playwright config, CSP/console/request guards, an axe check, and the one pinned `@playwright/test` version for every app's e2e tests |
+| [`@wshno/playwright-config`](packages/playwright-config) | Playwright config, CSP/console/request guards, an axe check, browser coverage with a unit + e2e coverage summary, and the one pinned `@playwright/test` version for every app's e2e tests |
 | [`@wshno/prettier-config`](packages/prettier-config)     | Prettier config: single quotes, no semicolons, trailing commas, width 120                                                            |
 | [`@wshno/tsconfig`](packages/tsconfig)                   | TypeScript base configs: base, React Router (Vite), Node                                                                             |
 

@@ -1,7 +1,7 @@
 {
   "name": "@wshno/playwright-config",
-  "version": "0.4.0",
-  "description": "Shared Playwright config, guards for CSP violations, console errors and failed requests, an axe accessibility check, and the one pinned @playwright/test version for every app's e2e tests",
+  "version": "0.5.0",
+  "description": "Shared Playwright config, guards for CSP violations, console errors and failed requests, an axe accessibility check, browser coverage with a unit + e2e coverage summary, and the one pinned @playwright/test version for every app's e2e tests",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",
   "repository": {
@@ -15,7 +15,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./coverage-summary": {
+      "types": "./dist/coverage-summary.d.ts",
+      "default": "./dist/coverage-summary.js"
     }
+  },
+  "bin": {
+    "wshno-coverage-summary": "./dist/coverage-summary-cli.js"
   },
   "files": [
     "dist",
@@ -28,7 +35,9 @@
     "csp",
     "content-security-policy",
     "accessibility",
-    "axe"
+    "axe",
+    "coverage",
+    "monocart"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -40,6 +49,18 @@
   "dependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1"
+  },
+  "peerDependencies": {
+    "allure-playwright": ">=3",
+    "monocart-reporter": ">=2.15"
+  },
+  "peerDependenciesMeta": {
+    "allure-playwright": {
+      "optional": true
+    },
+    "monocart-reporter": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@wshno/tsconfig": "*"

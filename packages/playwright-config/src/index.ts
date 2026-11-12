@@ -41,6 +41,7 @@ export function definePlaywrightConfig(config: PlaywrightTestConfig = {}): Playw
 
 export * from './a11y.js'
 export * from './console.js'
+export * from './coverage.js'
 export * from './csp.js'
 export * from './guard.js'
 export * from './guards.js'

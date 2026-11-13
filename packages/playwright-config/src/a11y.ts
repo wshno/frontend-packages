@@ -14,6 +14,13 @@ export interface AccessibleOptions {
   impacts?: AxeImpact[]
   /** CSS selectors to limit the scan to. Default: the whole page. */
   include?: string[]
+  /**
+   * Let axe fetch the page's stylesheets to build a CSSOM (axe's `preload`). Default false: the fetch is
+   * an XHR the page's own CSP may block (connect-src) for a cross-origin stylesheet such as Google
+   * Fonts, and axe then injects a <style> without the nonce, so the guards fail the test over axe's
+   * own requests. Only `css-orientation-lock` needs the CSSOM.
+   */
+  preload?: boolean
   /** axe rule tags to run. Default: WCAG 2.0, 2.1 and 2.2 A and AA. */
   tags?: string[]
 }
@@ -33,7 +40,9 @@ export function formatAxeViolation(violation: Violation): string {
  */
 export async function expectAccessible(page: Page, options: AccessibleOptions = {}): Promise<void> {
   await test.step('axe accessibility scan', async () => {
-    let builder = new AxeBuilder({ page }).withTags(options.tags ?? defaultAxeTags)
+    let builder = new AxeBuilder({ page })
+      .withTags(options.tags ?? defaultAxeTags)
+      .options({ preload: options.preload ?? false })
     for (const selector of options.include ?? []) builder = builder.include(selector)
     for (const selector of options.exclude ?? []) builder = builder.exclude(selector)
     if (options.disableRules?.length) builder = builder.disableRules(options.disableRules)

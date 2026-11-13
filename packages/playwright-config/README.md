@@ -76,7 +76,8 @@ with the unit tests' coverage into one table.
 
 1. **Collect.** Add the monocart reporter with `coverage`, and build the suite's `test` on `coverageTest`.
    Its `page` records V8 coverage and hands it to monocart, only when the run has that reporter and the
-   browser is Chromium, so local runs without it pay nothing.
+   browser is Chromium, so local runs without it pay nothing. A project whose tests use the same V8
+   coverage interface themselves (Lighthouse audits) turns it off with `use: { collectCoverage: false }`.
 
    ```ts
    // playwright.config.ts
@@ -95,9 +96,14 @@ with the unit tests' coverage into one table.
    ```
 
    `layout` names the app's directory in the repo and its source directories: paths from the source maps
-   become repo-relative (`frontend/app/root.tsx`), and anything outside `root` (node_modules, generated
-   files) drops out. `origin` keeps the scripts served by the app; pass `entryFilter` instead to narrow it
-   to the app's own chunks. The reports (v8 html, lcov, Cobertura) go to `monocart-coverage/`: list it in
+   become repo-relative (`frontend/app/root.tsx`), and anything outside `<root>/<sourceDir>/` (node_modules,
+   generated files) drops out. When the bundle also holds workspace packages, give several roots, with `*`
+   for one directory: `root: ['apps/web', 'packages/*']` (app-relative paths such as `src/a.ts` belong to
+   the first). `layout.exclude` (a regex on the repo-relative path) leaves out what shouldn't count, such
+   as generated clients or bootstrapping; use the same exclusions in the unit tests' coverage config so
+   both reports count the same files. `origin` keeps the script files served by the app (a page's inline
+   scripts, which have no source map, are left out); pass `entryFilter` instead to narrow it to the app's
+   own chunks. The reports (v8 html, lcov, Cobertura) go to `monocart-coverage/`: list it in
    `playwright-e2e.yml`'s `coverage_paths_json` to upload it as the `e2e-coverage` artifact.
 
 2. **Merge.** `wshno-coverage-summary` prints a Markdown table (unit, e2e, combined, and the files where e2e
@@ -109,8 +115,9 @@ with the unit tests' coverage into one table.
      --e2e e2e/monocart-coverage/lcov.info --root frontend --source-dirs app
    ```
 
-   `--exclude <regex>` drops files (matched against the normalised path), `--top <n>` sizes the gains table,
-   and `--unit-label` names the unit row. The merge is approximate: istanbul counts statement lines and V8
+   `--root` takes a comma-separated list or repeats, like `layout.root` (`--root apps/web,packages/*`).
+   `--exclude <regex>` drops files (matched against the normalised path; repeat it for more), `--top <n>`
+   sizes the gains table, and `--unit-label` names the unit row; `--help` lists them all. The merge is approximate: istanbul counts statement lines and V8
    counts every executable line, so a line only one side knows keeps that side's status.
 
 ## Layout

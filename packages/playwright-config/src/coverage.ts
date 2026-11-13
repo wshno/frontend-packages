@@ -1,6 +1,6 @@
 import { type FullConfig, type ReporterDescription, test as base } from '@playwright/test'
 
-import { normaliseSourcePath, type SourceLayout } from './coverage-summary.js'
+import { inLayout, normaliseSourcePath, type SourceLayout } from './coverage-summary.js'
 
 /**
  * Browser JS coverage and the extra CI reporters: what used to be copied into each app's
@@ -23,8 +23,10 @@ export interface MonocartCoverageOptions {
   /** Report title. Default: the reporter's name plus " coverage". */
   name?: string
   /**
-   * Which scripts count, by URL. Default: everything served from `origin`. Narrow it to the app's
-   * own chunks when the page loads big third-party bundles from the same origin.
+   * Which scripts count, by URL. Default: script files (a path ending in a file name with an extension)
+   * served from `origin`, so a page's inline scripts (an SSR document's hydration data, under the page's
+   * own URL and without a source map) don't show up as a file named after the host. Narrow it to the
+   * app's own chunks when the page loads big third-party bundles from the same origin.
    */
   entryFilter?: (entry: { url: string }) => boolean
   /** Where the app is served (the suite's baseURL); the default entryFilter keeps its scripts. */
@@ -32,7 +34,8 @@ export interface MonocartCoverageOptions {
   /**
    * The app's layout in the repo. Source-map paths are normalised to repo-relative
    * `<root>/<sourceDir>/...` (the same paths wshno-coverage-summary gives the unit report), and only
-   * those under `<root>/` are kept: node_modules and generated files drop out.
+   * those under a root and not matching `layout.exclude` are kept: node_modules, generated files and
+   * whatever the app leaves out drop out.
    */
   layout?: SourceLayout
   /** Where the reports go. Default `./monocart-coverage` (relative to the config). */
@@ -61,6 +64,8 @@ export function monocartReporter({
   if (!coverage) return ['monocart-reporter', { name, outputFile }]
   const { name: coverageName, entryFilter, origin, layout, outputDir, reports, ...rest } = coverage
   const originPrefix = origin ? new URL(origin).origin : undefined
+  const defaultEntryFilter = (entry: { url: string }) =>
+    (!originPrefix || entry.url.startsWith(originPrefix)) && isScriptFile(entry.url)
   return [
     'monocart-reporter',
     {
@@ -68,10 +73,10 @@ export function monocartReporter({
       outputFile,
       coverage: {
         name: coverageName ?? `${name} coverage`,
-        entryFilter: entryFilter ?? ((entry: { url: string }) => !originPrefix || entry.url.startsWith(originPrefix)),
+        entryFilter: entryFilter ?? defaultEntryFilter,
         ...(layout && {
           sourcePath: (sourcePath: string) => normaliseSourcePath(sourcePath, layout),
-          sourceFilter: (sourcePath: string) => normaliseSourcePath(sourcePath, layout).startsWith(`${layout.root}/`),
+          sourceFilter: (sourcePath: string) => inLayout(normaliseSourcePath(sourcePath, layout), layout),
         }),
         outputDir: outputDir ?? './monocart-coverage',
         reports: reports ?? ['v8', 'cobertura', 'lcov'],
@@ -81,6 +86,19 @@ export function monocartReporter({
       },
     },
   ]
+}
+
+/** Whether a script URL names a file (`/assets/index-abc.js`), not a page (`/`, `/items/3`). */
+export function isScriptFile(url: string): boolean {
+  let path: string
+  try {
+    path = new URL(url).pathname
+  } catch {
+    path = url.split(/[?#]/)[0] ?? ''
+  }
+  const last = path.split('/').pop() ?? ''
+  const dot = last.lastIndexOf('.')
+  return dot > 0 && dot < last.length - 1
 }
 
 /** The allure-playwright entry for `reporter`. */
@@ -93,15 +111,24 @@ export function hasMonocartReporter(config: Pick<FullConfig, 'reporter'>): boole
   return config.reporter.some(([name]) => /(?:^|[\\/])monocart-reporter(?:[\\/]|$)/.test(name))
 }
 
+export interface CoverageFixtures {
+  /**
+   * Record this test's coverage (default true). Turn it off for a project whose tests use the same V8
+   * coverage interface themselves, e.g. Lighthouse audits: `use: { collectCoverage: false }`.
+   */
+  collectCoverage: boolean
+}
+
 /**
  * Records the test page's V8 JS coverage across navigations for monocart-reporter, when the run has
- * that reporter and the browser is Chromium. Pages the test opens itself (popups, `context.newPage()`)
- * are not recorded, and a page the test already closed is skipped rather than failing the test.
- * Merge it with the guards: `mergeTests(guardsTest, coverageTest)`.
+ * that reporter, the browser is Chromium and `collectCoverage` is on. Pages the test opens itself
+ * (popups, `context.newPage()`) are not recorded, and a page the test already closed is skipped
+ * rather than failing the test. Merge it with the guards: `mergeTests(guardsTest, coverageTest)`.
  */
-export const coverageTest = base.extend({
-  page: async ({ page, browserName }, use, testInfo) => {
-    const collect = browserName === 'chromium' && hasMonocartReporter(testInfo.config)
+export const coverageTest = base.extend<CoverageFixtures>({
+  collectCoverage: [true, { option: true }],
+  page: async ({ page, browserName, collectCoverage }, use, testInfo) => {
+    const collect = collectCoverage && browserName === 'chromium' && hasMonocartReporter(testInfo.config)
     if (collect) await page.coverage.startJSCoverage({ resetOnNavigation: false })
     await use(page)
     if (collect && !page.isClosed()) {

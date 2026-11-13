@@ -280,8 +280,10 @@ test('the record list is accessible', async ({ page }) => {
 ```
 
 Options: `impacts` (default `['serious', 'critical']`), `tags` (default `defaultAxeTags`), `include`
-and `exclude` (CSS selectors), and `disableRules` (axe rule ids, e.g. `color-contrast` while a design
-fix is pending).
+and `exclude` (CSS selectors), `disableRules` (axe rule ids, e.g. `color-contrast` while a design
+fix is pending), and `preload` (default `false`: axe doesn't fetch the page's stylesheets for a CSSOM, an
+XHR the page's CSP can block for a cross-origin stylesheet such as Google Fonts, which the guards would
+then report; only `css-orientation-lock` needs it).
 
 It is an explicit call, not a guard: a scan is not free, and only the spec knows
 when the page shows what should be checked.

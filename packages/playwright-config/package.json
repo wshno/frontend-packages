@@ -1,6 +1,6 @@
 {
   "name": "@wshno/playwright-config",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Shared Playwright config, guards for CSP violations, console errors and failed requests, an axe accessibility check, browser coverage with a unit + e2e coverage summary, and the one pinned @playwright/test version for every app's e2e tests",
   "license": "MIT",
   "author": "Hans Christian Winther-Sørensen",

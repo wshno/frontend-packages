@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   e2eGains,
   filterFiles,
+  inLayout,
   mergeCoverage,
   normaliseSourcePath,
   parseCobertura,
@@ -17,6 +18,8 @@ import {
 const expo: SourceLayout = { root: 'app', sourceDirs: ['src', 'app'] }
 // ClutterStock: a React Router app in frontend/, sources in frontend/app.
 const vite: SourceLayout = { root: 'frontend', sourceDirs: ['app'] }
+// romslig: the web app in apps/web plus the workspace packages its bundle imports.
+const workspace: SourceLayout = { root: ['apps/web', 'packages/*'], sourceDirs: ['src'] }
 
 const lcov = (records: [string, Record<number, number>][]) =>
   records
@@ -44,6 +47,54 @@ describe('normaliseSourcePath', () => {
     expect(normaliseSourcePath('frontend/app/root.tsx', vite)).toBe('frontend/app/root.tsx')
     expect(normaliseSourcePath('/home/runner/work/cs/cs/frontend/app/root.tsx', vite)).toBe('frontend/app/root.tsx')
     expect(normaliseSourcePath('node_modules/react/index.js', vite)).toBe('node_modules/react/index.js')
+  })
+})
+
+describe('normaliseSourcePath with several roots', () => {
+  it('puts app-relative paths under the first root and finds packages anywhere in the path', () => {
+    expect(normaliseSourcePath('src/App.tsx', workspace)).toBe('apps/web/src/App.tsx')
+    expect(normaliseSourcePath('/src/App.tsx', workspace)).toBe('apps/web/src/App.tsx')
+    expect(normaliseSourcePath('apps/web/src/store.ts', workspace)).toBe('apps/web/src/store.ts')
+    expect(normaliseSourcePath('packages/shared/src/geometry.ts', workspace)).toBe('packages/shared/src/geometry.ts')
+    expect(normaliseSourcePath('../../../../packages/ai/src/client.ts', workspace)).toBe('packages/ai/src/client.ts')
+    expect(normaliseSourcePath('/home/runner/work/r/r/packages/shared/src/walk.ts', workspace)).toBe(
+      'packages/shared/src/walk.ts',
+    )
+    expect(normaliseSourcePath('node_modules/three/src/core/Object3D.js', workspace)).toBe(
+      'node_modules/three/src/core/Object3D.js',
+    )
+  })
+
+  it('takes the earliest root in the path', () => {
+    expect(normaliseSourcePath('/w/apps/web/src/vendor/packages/x/src/a.ts', workspace)).toBe(
+      'apps/web/src/vendor/packages/x/src/a.ts',
+    )
+  })
+})
+
+describe('inLayout', () => {
+  const excluding: SourceLayout = { ...workspace, exclude: /^apps\/web\/src\/(main\.tsx|viewer3d\/)/ }
+
+  it('keeps paths under any root, glob roots included', () => {
+    expect(inLayout('apps/web/src/store.ts', workspace)).toBe(true)
+    expect(inLayout('packages/shared/src/walk.ts', workspace)).toBe(true)
+    expect(inLayout('packages/src/x.ts', workspace)).toBe(false)
+    expect(inLayout('node_modules/three/src/x.js', workspace)).toBe(false)
+    expect(inLayout('localhost-5173', workspace)).toBe(false)
+  })
+
+  it('leaves out what the layout excludes', () => {
+    expect(inLayout('apps/web/src/main.tsx', excluding)).toBe(false)
+    expect(inLayout('apps/web/src/viewer3d/Viewer3D.tsx', excluding)).toBe(false)
+    expect(inLayout('apps/web/src/store.ts', excluding)).toBe(true)
+    const files = filterFiles(
+      new Map([
+        ['apps/web/src/main.tsx', new Map([[1, true]])],
+        ['apps/web/src/store.ts', new Map([[1, false]])],
+      ]),
+      excluding,
+    )
+    expect([...files.keys()]).toEqual(['apps/web/src/store.ts'])
   })
 })
 

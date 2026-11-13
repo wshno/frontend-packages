@@ -19,10 +19,41 @@
 export type FileCoverage = Map<string, Map<number, boolean>>
 
 export interface SourceLayout {
-  /** The app directory, relative to the repo root, e.g. `app` or `frontend`. */
-  root: string
-  /** Its source directories, e.g. `['src', 'app']`. A path is recognised by one of them. */
+  /**
+   * The app directory, relative to the repo root, e.g. `app` or `frontend`. Several when the bundle
+   * also holds workspace packages: `['apps/web', 'packages/*']`, where `*` stands for one directory.
+   * A path relative to the app directory (`src/a.ts`) belongs to the first root.
+   */
+  root: string | string[]
+  /** The source directories under each root, e.g. `['src', 'app']`. A path is recognised by one of them. */
   sourceDirs: string[]
+  /**
+   * Repo-relative paths to leave out (tested against `<root>/<sourceDir>/...`), e.g.
+   * `/^frontend\/app\/routes\//` or generated code. The same in the unit and e2e reports, so every view
+   * of the coverage counts the same files.
+   */
+  exclude?: RegExp
+}
+
+function cleanRoot(root: string): string {
+  let out = root.replaceAll('\\', '/').replace(/^\.?\/+/, '')
+  while (out.endsWith('/')) out = out.slice(0, -1)
+  return out
+}
+
+/** The layout's roots, cleaned: forward slashes, no leading `./` or trailing `/`. */
+export function layoutRoots(layout: SourceLayout): string[] {
+  return (Array.isArray(layout.root) ? layout.root : [layout.root]).map(cleanRoot).filter(Boolean)
+}
+
+const escapeRe = (s: string) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+/** A root as a regex source; `*` matches one path segment. */
+const rootPattern = (root: string) => root.split('*').map(escapeRe).join('[^/]+')
+
+/** Whether a repo-relative path is in one of the layout's `<root>/<sourceDir>/` directories. */
+export function underRoot(path: string, layout: SourceLayout): boolean {
+  const dirs = layout.sourceDirs.map(escapeRe).join('|')
+  return layoutRoots(layout).some((root) => new RegExp(`^${rootPattern(root)}/(?:${dirs})/`).test(path))
 }
 
 export interface Totals {
@@ -37,26 +68,25 @@ export interface Totals {
  * - already repo-relative (`app/src/a.ts`): kept;
  * - absolute or prefixed (`/home/runner/work/x/x/app/src/a.ts`, `C:\r\x\app\src\a.ts`): cut at the
  *   first `<root>/<sourceDir>/`;
- * - relative to the app directory (`src/a.ts`, `/src/a.ts` from Metro): prefixed with `<root>/`.
+ * - relative to the app directory (`src/a.ts`, `/src/a.ts` from Metro): prefixed with the first root.
  *
- * Anything else (`node_modules/...`) comes back as-is, with forward slashes.
+ * With several roots (workspace packages), the earliest `<root>/<sourceDir>/` in the path wins, so
+ * `../../packages/shared/src/a.ts` becomes `packages/shared/src/a.ts`. Anything else
+ * (`node_modules/...`) comes back as-is, with forward slashes.
  */
 export function normaliseSourcePath(raw: string, layout: SourceLayout): string {
-  let root = layout.root.replaceAll('\\', '/').replace(/^\.?\/+/, '')
-  while (root.endsWith('/')) root = root.slice(0, -1)
-  const prefixes = layout.sourceDirs.map((dir) => `${root}/${dir}/`)
+  const roots = layoutRoots(layout)
+  const dirs = layout.sourceDirs.map(escapeRe).join('|')
+  const prefix = `(?:${roots.map(rootPattern).join('|')})/(?:${dirs})/`
   let path = raw.trim().replaceAll('\\', '/')
   if (path.startsWith('./')) path = path.slice(2)
-  if (prefixes.some((prefix) => path.startsWith(prefix))) return path
+  if (new RegExp(`^${prefix}`).test(path)) return path
   // The first <root>/<sourceDir>/ that starts a path segment.
-  let cut = -1
-  for (const prefix of prefixes) {
-    const at = path.indexOf(`/${prefix}`)
-    if (at !== -1 && (cut === -1 || at < cut)) cut = at
-  }
-  if (cut !== -1) return path.slice(cut + 1)
+  const inside = new RegExp(`^.*?/(${prefix}.*)$`).exec(path)
+  if (inside?.[1]) return inside[1]
   path = path.replace(/^\/+/, '')
-  if (layout.sourceDirs.some((dir) => path.startsWith(`${dir}/`))) return `${root}/${path}`
+  const first = roots.find((root) => !root.includes('*'))
+  if (first && layout.sourceDirs.some((dir) => path.startsWith(`${dir}/`))) return `${first}/${path}`
   return path
 }
 
@@ -114,11 +144,16 @@ export function parseCoverage(text: string, layout: SourceLayout): FileCoverage 
     : parseLcov(text, layout)
 }
 
-/** Keeps the files under `<root>/` that don't match `exclude`. */
+/** Whether a normalised path counts: in a `<root>/<sourceDir>/`, and not excluded by the layout. */
+export function inLayout(path: string, layout: SourceLayout): boolean {
+  return underRoot(path, layout) && !layout.exclude?.test(path)
+}
+
+/** Keeps the files the layout counts (see inLayout) that don't match `exclude` either. */
 export function filterFiles(files: FileCoverage, layout: SourceLayout, exclude: RegExp | null = null): FileCoverage {
   const out: FileCoverage = new Map()
   for (const [file, lines] of files) {
-    if (!file.startsWith(`${layout.root}/`)) continue
+    if (!inLayout(file, layout)) continue
     if (exclude?.test(file)) continue
     out.set(file, lines)
   }

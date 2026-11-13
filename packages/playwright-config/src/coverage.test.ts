@@ -33,6 +33,10 @@ describe('monocartReporter', () => {
     expect(coverage.name).toBe('App E2E coverage')
     expect(coverage.entryFilter({ url: 'http://localhost:5173/assets/root.js' })).toBe(true)
     expect(coverage.entryFilter({ url: 'https://auth.example/app.js' })).toBe(false)
+    // An SSR document's inline scripts run under the page's URL and have no source map.
+    expect(coverage.entryFilter({ url: 'http://localhost:5173/' })).toBe(false)
+    expect(coverage.entryFilter({ url: 'http://localhost:5173/items/3?tab=1' })).toBe(false)
+    expect(coverage.entryFilter({ url: 'http://localhost:5173/assets/chunk-x.js?v=2' })).toBe(true)
     expect(coverage.sourcePath?.('app/lib/nonce.tsx')).toBe('frontend/app/lib/nonce.tsx')
     expect(coverage.sourceFilter?.('app/lib/nonce.tsx')).toBe(true)
     expect(coverage.sourceFilter?.('node_modules/react/index.js')).toBe(false)
@@ -41,6 +45,22 @@ describe('monocartReporter', () => {
       reports: ['v8', 'cobertura', 'lcov'],
       inline: true,
     })
+  })
+
+  it('applies several roots and the layout exclude to the sources', () => {
+    const coverage = coverageOf(
+      monocartReporter({
+        name: 'App E2E',
+        coverage: {
+          layout: { root: ['apps/web', 'packages/*'], sourceDirs: ['src'], exclude: /^apps\/web\/src\/main\.tsx$/ },
+        },
+      }),
+    )
+    expect(coverage.sourcePath?.('src/store.ts')).toBe('apps/web/src/store.ts')
+    expect(coverage.sourcePath?.('../../packages/shared/src/walk.ts')).toBe('packages/shared/src/walk.ts')
+    expect(coverage.sourceFilter?.('src/store.ts')).toBe(true)
+    expect(coverage.sourceFilter?.('packages/shared/src/walk.ts')).toBe(true)
+    expect(coverage.sourceFilter?.('src/main.tsx')).toBe(false)
   })
 
   it('lets the app override the defaults and pass monocart options through', () => {

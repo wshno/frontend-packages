@@ -28,7 +28,7 @@
     "typescript"
   ],
   "dependencies": {
-    "@eslint-react/eslint-plugin": "5.28.8",
+    "@eslint-react/eslint-plugin": "5.30.2",
     "@eslint/js": "10.0.1",
     "@vitest/eslint-plugin": "1.6.28",
     "eslint-plugin-jest-dom": "5.10.1",
